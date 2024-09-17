@@ -1,12 +1,13 @@
-# pages/Key_Detector.py
-
 import streamlit as st
+from streamlit_audiorecorder import st_audiorec
 import numpy as np
 import librosa
 import matplotlib.pyplot as plt
-from st_audiorec import st_audiorec
-import io
 import soundfile as sf
+import io
+
+# Logo
+st.image('redsquares.jpg', width=100)
 
 # Title for the Key Detector page
 st.title("Key Detector")
@@ -25,17 +26,16 @@ if input_option == "Upload a file":
         st.success("Audio file uploaded successfully!")
 elif input_option == "Record using microphone":
     st.write("Please record audio using the recorder below.")
-    audio_bytes = st_audiorec()
+    audio = st_audiorec("Click to record", "Click to stop recording")
 
-    if audio_bytes is not None:
-        # Convert audio bytes to numpy array
-        audio_data, sr = sf.read(io.BytesIO(audio_bytes))
+    if audio:
+        # Convert audio to numpy array
+        audio_data = audio.export().read()  # Get audio data in bytes
+        audio_data, sr = sf.read(io.BytesIO(audio_data))
         st.success("Audio recorded successfully!")
-    else:
-        st.warning("No audio recorded yet.")
 
 # Proceed with analysis if audio_data is available
-if audio_data is not None and sr is not None and audio_data.size > 0:  # Added check for empty audio_data
+if audio_data is not None and sr is not None and audio_data.size > 0:
     # Normalize and preprocess audio
     audio_data = audio_data.astype(float)
     if audio_data.ndim > 1:
@@ -50,6 +50,9 @@ if audio_data is not None and sr is not None and audio_data.size > 0:  # Added c
     if sr != 22050:
         audio_data = librosa.resample(audio_data, orig_sr=sr, target_sr=22050)
         sr = 22050
+
+    # Your analysis code goes here...
+
 
     # Compute chromagram using Librosa
     chromagram = librosa.feature.chroma_cqt(y=audio_data, sr=sr)
