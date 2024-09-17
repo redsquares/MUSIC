@@ -1,5 +1,5 @@
 streamlit
-streamlit-audiorecorder
+audiorecorder
 librosa
 numpy
 matplotlib
