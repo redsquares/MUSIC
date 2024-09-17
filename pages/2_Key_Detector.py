@@ -8,9 +8,6 @@ from st_audiorec import st_audiorec
 import io
 import soundfile as sf
 
-# Logo
-st.image('redsquares.jpg', width=100)
-
 # Title for the Key Detector page
 st.title("Key Detector")
 
@@ -28,7 +25,6 @@ if input_option == "Upload a file":
         st.success("Audio file uploaded successfully!")
 elif input_option == "Record using microphone":
     st.write("Please record audio using the recorder below.")
-    st.write("**Note:** In Safari, you may need to start and stop the recording once before it starts working properly.")
     audio_bytes = st_audiorec()
 
     if audio_bytes is not None:
@@ -166,17 +162,17 @@ if audio_data is not None and sr is not None and audio_data.size > 0:  # Added c
     draw_piano(scale_notes)
 
     # General function for drawing the fretboard
-    st.write("### Guitar Fretboard")
-    def draw_guitar_fretboard(highlight_notes, tonic_note=None):
+    st.write("### Guitar")
+
+    def draw_guitar_fretboard(highlight_notes):
         import matplotlib.patches as patches
 
         # Define guitar strings and frets
-        strings = ['E', 'A', 'D', 'G', 'B', 'E_high']  # Inverted
+        strings = ['E', 'A', 'D', 'G', 'B', 'E_high']
         num_frets = 18  # Represent 18 frets
 
         # Note mapping for each string and fret
-        note_names = ['C', 'C#', 'D', 'D#', 'E', 'F',
-                      'F#', 'G', 'G#', 'A', 'A#', 'B']
+        note_names = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
         string_notes = {
             'E_high': [note_names[(4 + fret) % 12] for fret in range(num_frets + 1)],
             'B': [note_names[(11 + fret) % 12] for fret in range(num_frets + 1)],
@@ -188,51 +184,58 @@ if audio_data is not None and sr is not None and audio_data.size > 0:  # Added c
 
         fig, ax = plt.subplots(figsize=(14, 4))
 
-        # Draw frets
-        fret_positions = np.linspace(0, num_frets, num_frets + 1)
+        # Draw vertical lines for frets (comb) with thicker lines
+        fret_positions = np.linspace(1, num_frets, num_frets)  # Start at 1 to represent fret 1
         for idx, fret_pos in enumerate(fret_positions):
-            line_width = 2 if idx == 0 else 1
+            line_width = 3 if idx == 0 else 1  # Thicker line for the comb's start
             ax.plot([fret_pos, fret_pos], [0, 6], color='black', linewidth=line_width)
 
-        # Draw strings
-        for i in range(7):
-            ax.plot([0, fret_positions[-1]], [i, i], color='black')
+        # Draw horizontal lines for strings, shortened to start from the comb
+        for i in range(6):  # 6 strings
+            ax.plot([0.5, num_frets], [i, i], color='black', linewidth=1)  # Start from 0.5 to align with comb
 
-        # Add string names (outside of the fretboard)
-        for i, string in enumerate(strings):
-            ax.text(-0.5, 6 - i, string, ha='center', va='center', fontsize=10, fontweight='bold')
-            if string in highlight_notes:
-                ax.text(0.5, 6 - i, string, ha='center', va='center', fontsize=10, color='pink', fontweight='bold')
+        # Draw the top horizontal line
+        ax.plot([0.5, num_frets], [6, 6], color='black', linewidth=1)  # Top line
 
-        # Fret markers (updated to avoid out of bounds)
-        marker_frets = [3, 5, 7, 15, 18]
+        # Fret markers
+        marker_frets = [3, 5, 7, 12, 15, 18]
         for fret in marker_frets:
-            if fret < len(fret_positions) - 1:  # Avoid accessing out of bounds
-                fret_pos = (fret_positions[fret] + fret_positions[fret + 1]) / 2
-                ax.plot(fret_pos, 6.5, marker='o', color='black', markersize=5)
+            if fret < len(fret_positions):  # Avoid out-of-bounds index
+                fret_pos = (fret_positions[fret - 1] + fret_positions[fret]) / 2
+                if fret == 12:
+                    # Double dots for fret 12
+                    ax.plot([fret_pos - 0.1, fret_pos + 0.1], [6.5, 6.5], marker='o', color='black', markersize=5)
+                else:
+                    ax.plot(fret_pos, 6.5, marker='o', color='black', markersize=5)
 
-        # Double dots on 12th fret
-        if 12 < len(fret_positions) - 1:
-            fret_pos = (fret_positions[12] + fret_positions[13]) / 2
-            ax.plot([fret_pos - 0.1, fret_pos + 0.1], [6.5, 6.5], marker='o', color='black', markersize=5)
-
-        # Highlight notes
+        # Highlight notes (align labels with spaces)
         for string_idx, string in enumerate(strings):
-            for fret in range(num_frets):
-                note = string_notes[string][fret]
-                if note in highlight_notes:
-                    x_pos = (fret_positions[fret] + fret_positions[fret + 1]) / 2
-                    y_pos = 6 - string_idx
-                    circle = patches.Circle((x_pos, y_pos), 0.4, facecolor='pink', edgecolor='black')
-                    ax.add_patch(circle)
-                    ax.text(x_pos, y_pos, note, fontsize=8, ha='center', va='center')
+            for fret in range(1, num_frets + 1):  # Start from fret 1
+                if fret < num_frets:  # Avoid accessing out-of-bounds index
+                    note = string_notes[string][fret]
+                    if note in highlight_notes:
+                        x_pos = (fret_positions[fret - 1] + fret_positions[fret]) / 2
+                        y_pos = 6 - string_idx - 0.5  # Align notes in spaces
+                        circle_color = 'lightgreen' if note == key_root else 'pink'  # Change tonic note color
+                        circle = patches.Circle((x_pos, y_pos), 0.4, facecolor=circle_color)  # Removed outer border
+                        ax.add_patch(circle)
+                        ax.text(x_pos, y_pos, note, fontsize=8, ha='center', va='center')
 
-        ax.set_xlim(-1, fret_positions[-1] + 1)
+        # Add open string notes (3 pixels to the left)
+        for i, string in enumerate(strings):
+            open_note = string_notes[string][0]
+            y_pos = 6 - i - 0.5  # Original height for open strings
+            circle_color = 'lightgreen' if open_note == key_root else 'pink'  # Change tonic note color
+            ax.add_patch(patches.Circle((0.47, y_pos), 0.4, color=circle_color))  # Move circles 3 pixels to the left
+            ax.text(0.47, y_pos, open_note, fontsize=8, ha='center', va='center')  # Align with circles
+
+        ax.set_xlim(-1.5, fret_positions[-1] + 1)
         ax.set_ylim(-0.5, 7)
         ax.axis('off')
         st.pyplot(fig)
 
-    draw_guitar_fretboard(scale_notes, key_root)
+    
+    draw_guitar_fretboard(scale_notes)
 
     # Visualize the chromagram
     st.write("### Chromagram")
